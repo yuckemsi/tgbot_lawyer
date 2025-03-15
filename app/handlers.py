@@ -9,7 +9,12 @@ import app.keyboards as kb
 
 import app.bitrix as bx
 
+import app.email as email
+
 import app.database.db as db
+
+from dotenv import load_dotenv
+import os
 
 rt = Router()
 
@@ -148,7 +153,7 @@ async def date(callback: CallbackQuery, state: FSMContext):
 	await state.set_state(Questions.time)
 
 @rt.callback_query(F.data.startswith('time_'))
-async def time(callback: CallbackQuery, state: FSMContext):
+async def time(callback: CallbackQuery, state: FSMContext, bot: Bot):
 	await callback.answer()
 	await callback.message.delete()
 	time = callback.data.split('_')[1]
@@ -157,8 +162,11 @@ async def time(callback: CallbackQuery, state: FSMContext):
 		await state.update_data(time=time)
 		data = await state.get_data()
 		print(data)
+		load_dotenv()
 		await db.add_appointment(callback.from_user.id, data["theme"], data["date"], time, data["phone"])
 		await bx.add_lead(data["theme"], data["dolgi"], data["sum"], data["zalog"], data["imush"], data["phone"], data["date"], time)
+		# email.send_email(data["theme"], data["dolgi"], data["sum"], data["zalog"], data["imush"], data["phone"], data["date"], time)
+		await bot.send_message(os.getenv('ADMIN_TG_ID'), f'Новая заявка на консультацию! \n\nТема: {data["theme"]} \nДата: {data["date"]} в {time} \nТелефон: {data["phone"]}')
 		await callback.message.answer(f'Вы записаны на встречу! \n\nНаш офис находится по адресу: г. Кемерово ул. Ноградская 32 (ост. Главпочтамт) \nДата: {data["date"]} в {time} \n\nТелефон: 8 (3842)78-00-98\n<a href="https://2gis.ru/kemerovo/firm/70000001082550197">Ссылка на 2ГИС</a>', parse_mode="html")
 		await state.clear()
 	if db_time == True:
